@@ -167,6 +167,34 @@ export function CredentialForm({
     });
   };
 
+  const waitForImages = async (root: HTMLElement) => {
+    const images = Array.from(root.querySelectorAll("img"));
+
+    await Promise.all(
+      images.map(async (img) => {
+        img.loading = "eager";
+        img.decoding = "sync";
+
+        if (img.complete && img.naturalWidth > 0) {
+          if (typeof img.decode === "function") {
+            try {
+              await img.decode();
+            } catch {
+              // Ignore decode failures; we still attempt export with the loaded bitmap.
+            }
+          }
+          return;
+        }
+
+        await new Promise<void>((resolve) => {
+          const done = () => resolve();
+          img.addEventListener("load", done, { once: true });
+          img.addEventListener("error", done, { once: true });
+        });
+      }),
+    );
+  };
+
   const handlePrimaryAction = async () => {
     if (isSaved) {
       setSubmitError("");
@@ -190,6 +218,10 @@ export function CredentialForm({
         exportWrapper.style.padding = "0";
         exportWrapper.appendChild(exportNode);
         document.body.appendChild(exportWrapper);
+        await waitForImages(exportNode);
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => resolve()),
+        );
 
         let canvas: HTMLCanvasElement;
         try {
@@ -212,8 +244,8 @@ export function CredentialForm({
         const imageData = canvas.toDataURL("image/png");
         const pdf = new jsPDF({
           orientation: "portrait",
-          unit: "mm",
-          format: "a4",
+          unit: "px",
+          format: [350, 720],
         });
 
         const pageWidth = pdf.internal.pageSize.getWidth();
@@ -279,9 +311,12 @@ export function CredentialForm({
       });
 
       const responseText = await response.text();
-      let parsedResponse:
-        | { ok?: boolean; success?: boolean; error?: string; message?: string }
-        | null = null;
+      let parsedResponse: {
+        ok?: boolean;
+        success?: boolean;
+        error?: string;
+        message?: string;
+      } | null = null;
       try {
         parsedResponse = responseText ? JSON.parse(responseText) : null;
       } catch {

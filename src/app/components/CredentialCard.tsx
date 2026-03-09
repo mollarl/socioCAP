@@ -1,5 +1,6 @@
 import { User } from "lucide-react";
 import MD5 from "md5";
+import capLogo from "../img/cap.png";
 
 interface FormData {
   nombres: string;
@@ -47,19 +48,24 @@ export function CredentialCard({ formData, cardRef }: CredentialCardProps) {
         </div>
 
         {/* Photo Section */}
-        <div className="flex justify-center py-6 px-6">
+        <div className="relative flex justify-center py-6 px-6">
           <div className="w-40 h-40 rounded-full bg-white overflow-hidden border-4 border-white shadow-lg">
             {formData.imagen ? (
-              <img
-                src={formData.imagen}
-                alt="Foto de perfil"
-                className="w-full h-full object-cover"
-              />
+              <div className="relative h-full w-full">
+                <img
+                  src={formData.imagen}
+                  alt="Foto de perfil"
+                  className="absolute left-1/2 top-1/2 h-auto w-auto min-h-full min-w-full -translate-x-1/2 -translate-y-1/2"
+                />
+              </div>
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gray-100">
                 <User className="w-20 h-20 text-gray-400" />
               </div>
             )}
+          </div>
+          <div className="absolute z-10000 bottom-5 ml-30 text-black">
+            <img src={capLogo.src} alt="Logo CAP" className="h-14 w-auto max-w-28" />
           </div>
         </div>
 
