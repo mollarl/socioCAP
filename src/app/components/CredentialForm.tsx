@@ -17,6 +17,7 @@ interface FormData {
 interface CredentialFormProps {
   formData: FormData;
   cardRef: React.RefObject<HTMLDivElement>;
+  isCAP: boolean;
   onFormChange: (
     field: keyof FormData,
     value: string | string[] | null,
@@ -28,6 +29,7 @@ const matriculaOptions = ["Arquero", "Juez", "Entrenador", "Dirigente", "NO"];
 export function CredentialForm({
   formData,
   cardRef,
+  isCAP,
   onFormChange,
 }: CredentialFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,7 +84,7 @@ export function CredentialForm({
     if (!/^\d{7,8}$/.test(formData.dni.trim()))
       return "El DNI debe tener 7 u 8 dígitos.";
     if (!formData.fechaNacimiento) return "Ingrese fecha de nacimiento.";
-    if (formData.matricula.length === 0)
+    if (isCAP && formData.matricula.length === 0)
       return "Seleccione al menos una matrícula.";
     if (!formData.fechaExpiracion) return "Ingrese fecha de expiración.";
     if (formData.fechaExpiracion <= formData.fechaNacimiento) {
@@ -303,9 +305,10 @@ export function CredentialForm({
           apellido: formData.apellido.trim(),
           dni: formData.dni.trim(),
           fechaNacimiento: formData.fechaNacimiento,
-          matricula: formData.matricula.join(", "),
+          matricula: isCAP ? formData.matricula.join(", ") : "",
           expiracion: formData.fechaExpiracion,
           control,
+          isCAP,
           timestamp: new Date().toISOString(),
         }),
       });
@@ -426,27 +429,29 @@ export function CredentialForm({
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Matrícula
-          </label>
-          <div className="space-y-2">
-            {matriculaOptions.map((option) => (
-              <label
-                key={option}
-                className="flex items-center space-x-3 cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={formData.matricula.includes(option)}
-                  onChange={() => handleMatriculaChange(option)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-yellow-500"
-                />
-                <span className="text-sm text-gray-700">{option}</span>
-              </label>
-            ))}
+        {isCAP && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Matrícula
+            </label>
+            <div className="space-y-2">
+              {matriculaOptions.map((option) => (
+                <label
+                  key={option}
+                  className="flex items-center space-x-3 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={formData.matricula.includes(option)}
+                    onChange={() => handleMatriculaChange(option)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-yellow-500"
+                  />
+                  <span className="text-sm text-gray-700">{option}</span>
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div>
           <label

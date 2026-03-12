@@ -1,6 +1,7 @@
 import { User } from "lucide-react";
 import MD5 from "md5";
 import capLogo from "../img/cap.png";
+import creLogo from "../img/cre.png";
 
 interface FormData {
   nombres: string;
@@ -14,10 +15,17 @@ interface FormData {
 
 interface CredentialCardProps {
   formData: FormData;
+  isCAP: boolean;
+  institutionLabel: string;
   cardRef?: React.RefObject<HTMLDivElement>;
 }
 
-export function CredentialCard({ formData, cardRef }: CredentialCardProps) {
+export function CredentialCard({
+  formData,
+  isCAP,
+  institutionLabel,
+  cardRef,
+}: CredentialCardProps) {
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
     const date = new Date(dateString + "T00:00:00");
@@ -30,20 +38,29 @@ export function CredentialCard({ formData, cardRef }: CredentialCardProps) {
   const control = formData.dni
     ? MD5(formData.fechaExpiracion + formData.dni + "cap/control").slice(-6)
     : null;
+  const logo = isCAP ? capLogo : creLogo;
+  const logoAlt = isCAP ? "Logo CAP" : "Logo CRE";
 
   return (
-    <div className="flex items-center justify-center p-8">
+    <div className="flex items-center justify-center p-2 sm:p-4 md:p-8 overflow-x-auto">
       <div
         ref={cardRef}
-        className="w-[350px] bg-gradient-to-br from-yellow-400 to-yellow-950 rounded-2xl shadow-2xl overflow-hidden"
+        className={`w-full max-w-[350px] min-w-[350px] bg-gradient-to-br ${isCAP ? "from-yellow-400 to-yellow-950" : "from-green-400 to-green-950"} rounded-2xl shadow-2xl overflow-hidden`}
       >
         {/* Header */}
-        <div className="bg-black py-4 px-6">
-          <h3 className="text-white text-center font-bold text-lg tracking-wide">
-            CLUB ATLÉTICO PACÍFICO
+        <div className={`${isCAP ? "bg-black" : "bg-red-500"} py-4 px-6`}>
+          <h3
+            className={`text-white text-center font-bold ${isCAP ? "text-lg" : "text-sm"} tracking-wide`}
+          >
+            {institutionLabel}
           </h3>
           <p className="text-white text-center text-sm">
-            <strong>Tiro con Arco</strong> | Credencial digital
+            {isCAP && (
+              <>
+                <strong>Tiro con Arco</strong> |{" "}
+              </>
+            )}
+            Credencial digital
           </p>
         </div>
 
@@ -65,7 +82,11 @@ export function CredentialCard({ formData, cardRef }: CredentialCardProps) {
             )}
           </div>
           <div className="absolute z-10000 bottom-5 ml-30 text-black">
-            <img src={capLogo.src} alt="Logo CAP" className="h-14 w-auto max-w-28" />
+            <img
+              src={logo.src}
+              alt={logoAlt}
+              className="h-14 w-auto max-w-28"
+            />
           </div>
         </div>
 
@@ -107,29 +128,31 @@ export function CredentialCard({ formData, cardRef }: CredentialCardProps) {
             </p>
           </div>
 
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">
-              Matrícula
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {formData.matricula.length > 0 ? (
-                formData.matricula.map((mat) => (
-                  <span
-                    key={mat}
-                    className="inline-block px-3 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs font-medium"
-                  >
-                    {mat}
-                  </span>
-                ))
-              ) : (
-                <span className="text-gray-900 font-semibold">-</span>
-              )}
+          {isCAP && (
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">
+                Matrícula
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {formData.matricula.length > 0 ? (
+                  formData.matricula.map((mat) => (
+                    <span
+                      key={mat}
+                      className="inline-block px-3 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs font-medium"
+                    >
+                      {mat}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-gray-900 font-semibold">-</span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="bg-black py-3 px-6">
+        <div className={`${isCAP ? "bg-black" : "bg-red-500"} py-3 px-6`}>
           <p className="text-white text-center text-xs opacity-80">
             {formData.fechaExpiracion
               ? `Válida hasta ${formatDate(formData.fechaExpiracion)}`

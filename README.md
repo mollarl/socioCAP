@@ -11,15 +11,21 @@
 
 The form sends validated data to a Google Apps Script Web App URL.
 
-Optional env var:
+Optional env vars:
 
-`NEXT_PUBLIC_GAS_WEB_APP_URL=https://script.google.com/macros/s/.../exec`
+`NEXT_PUBLIC_GAS_WEB_APP_URL_CAP=https://script.google.com/macros/s/.../exec`
 
-You can also set only the deployment ID:
+`NEXT_PUBLIC_GAS_WEB_APP_URL_NON_CAP=https://script.google.com/macros/s/.../exec`
 
-`NEXT_PUBLIC_GAS_WEB_APP_URL=AKfy...`
+You can also set only deployment IDs:
 
-If the env var is not present, the app uses the current deployment URL already configured in the form component.
+`NEXT_PUBLIC_GAS_WEB_APP_URL_CAP=AKfy...`
+
+`NEXT_PUBLIC_GAS_WEB_APP_URL_NON_CAP=AKfy...`
+
+Backward compatibility:
+
+`NEXT_PUBLIC_GAS_WEB_APP_URL` is still supported as a fallback for both modes.
 
 Apps Script sample code is in:
 
@@ -32,7 +38,7 @@ Deployment summary:
 3. `Deploy -> New deployment -> Web app`.
 4. Execute as: `Me`.
 5. Who has access: `Anyone`.
-6. Use the generated `/exec` URL in `NEXT_PUBLIC_GAS_WEB_APP_URL`.
+6. Use the generated `/exec` URL in `NEXT_PUBLIC_GAS_WEB_APP_URL_CAP` or `NEXT_PUBLIC_GAS_WEB_APP_URL_NON_CAP`.
 
 The script appends rows in this order:
 `timestamp, nombres, apellido, dni, fechaNacimiento, matricula, expiracion, control`
