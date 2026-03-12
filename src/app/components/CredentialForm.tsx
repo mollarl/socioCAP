@@ -23,7 +23,7 @@ interface CredentialFormProps {
   ) => void;
 }
 
-const matriculaOptions = ["Arquero", "Juez", "Entrenador", "NO"];
+const matriculaOptions = ["Arquero", "Juez", "Entrenador", "Dirigente", "NO"];
 
 export function CredentialForm({
   formData,
