@@ -308,6 +308,7 @@ export function CredentialForm({
           matricula: isCAP ? formData.matricula.join(", ") : "",
           expiracion: formData.fechaExpiracion,
           control,
+          imagen: formData.imagen,
           isCAP,
           timestamp: new Date().toISOString(),
         }),
@@ -319,6 +320,7 @@ export function CredentialForm({
         success?: boolean;
         error?: string;
         message?: string;
+        warnings?: string[];
       } | null = null;
       try {
         parsedResponse = responseText ? JSON.parse(responseText) : null;
@@ -340,7 +342,8 @@ export function CredentialForm({
 
       setIsSaved(true);
       setSubmitSuccess(
-        "Registro guardado en Google Sheets. Ya puede exportar el PDF.",
+        parsedResponse?.message ||
+          "Registro procesado. Ya puede exportar el PDF.",
       );
     } catch (error) {
       const message =
