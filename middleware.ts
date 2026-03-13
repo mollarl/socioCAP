@@ -1,9 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { auth } from "@/lib/auth/server";
+import { getAuth } from "@/lib/auth/server";
 
-const authMiddleware = auth.middleware({
-  loginUrl: "/auth/sign-in",
-});
+let authMiddleware: ReturnType<ReturnType<typeof getAuth>["middleware"]> | null =
+  null;
+
+function getAuthMiddleware() {
+  if (authMiddleware) return authMiddleware;
+  authMiddleware = getAuth().middleware({
+    loginUrl: "/auth/sign-in",
+  });
+  return authMiddleware;
+}
 
 export default async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -17,9 +24,16 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  return authMiddleware(request);
+  try {
+    return await getAuthMiddleware()(request);
+  } catch (error) {
+    console.error("Neon auth middleware failed:", error);
+    const redirectUrl = new URL("/auth/sign-in", request.url);
+    redirectUrl.searchParams.set("auth_error", "middleware");
+    return NextResponse.redirect(redirectUrl);
+  }
 }
 
 export const config = {
-  matcher: ["/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

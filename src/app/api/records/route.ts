@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPool } from "@/lib/database";
-import { auth } from "@/lib/auth/server";
+import { getAuth } from "@/lib/auth/server";
 import {
   canAccessTable,
   extractRawUserRole,
@@ -29,7 +29,7 @@ function resolvePage(rawValue: string | null) {
 
 export async function GET(request: Request) {
   try {
-    const { data: sessionData } = await auth.getSession();
+    const { data: sessionData } = await getAuth().getSession();
     const role = normalizeUserRole(extractRawUserRole(sessionData?.user));
     if (!sessionData?.user || !role) {
       return NextResponse.json(
