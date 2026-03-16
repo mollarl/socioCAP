@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Trash2 } from "lucide-react";
 import type { RecordsTable } from "@/lib/auth/authorization";
 
 type RecordRow = {
@@ -26,6 +27,11 @@ type RecordsResponse = {
     total: number;
     totalPages: number;
   };
+};
+
+type DeleteResponse = {
+  ok: boolean;
+  message?: string;
 };
 
 function formatDate(value: string | null) {
@@ -54,6 +60,8 @@ export function RecordsPanel({ allowedTables }: RecordsPanelProps) {
   const [totalItems, setTotalItems] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (allowedTables.length === 0) {
@@ -121,7 +129,51 @@ export function RecordsPanel({ allowedTables }: RecordsPanelProps) {
     return () => {
       isCancelled = true;
     };
-  }, [selectedTable, page]);
+  }, [selectedTable, page, reloadKey]);
+
+  const handleDelete = async (id: number) => {
+    if (!selectedTable || deletingId !== null) return;
+
+    const confirmed = window.confirm(
+      `Se eliminará el registro #${id} de ${selectedTable}. ¿Desea continuar?`,
+    );
+    if (!confirmed) return;
+
+    setDeletingId(id);
+    setError("");
+
+    try {
+      const response = await fetch("/api/records", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          table: selectedTable,
+          id,
+        }),
+      });
+
+      const payload = (await response.json()) as DeleteResponse;
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.message || "No se pudo eliminar el registro.");
+      }
+
+      if (records.length === 1 && page > 1) {
+        setPage((prev) => Math.max(1, prev - 1));
+      } else {
+        setReloadKey((prev) => prev + 1);
+      }
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Error inesperado al eliminar el registro.",
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const tableLabel = useMemo(() => {
     if (selectedTable === "CAP") return "CLUB ATLÉTICO PACÍFICO";
@@ -178,7 +230,7 @@ export function RecordsPanel({ allowedTables }: RecordsPanelProps) {
             </div>
 
             <div className="overflow-x-auto border border-gray-200 rounded-xl">
-              <table className="min-w-[920px] w-full text-sm">
+              <table className="min-w-[980px] w-full text-sm">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="text-left px-4 py-3 font-semibold text-gray-700">
@@ -205,13 +257,16 @@ export function RecordsPanel({ allowedTables }: RecordsPanelProps) {
                     <th className="text-left px-4 py-3 font-semibold text-gray-700">
                       Registrado
                     </th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-700">
+                      Acción
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading ? (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={9}
                         className="px-4 py-6 text-center text-gray-600"
                       >
                         Cargando registros...
@@ -220,7 +275,7 @@ export function RecordsPanel({ allowedTables }: RecordsPanelProps) {
                   ) : records.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={9}
                         className="px-4 py-6 text-center text-gray-600"
                       >
                         No hay registros para mostrar.
@@ -246,6 +301,17 @@ export function RecordsPanel({ allowedTables }: RecordsPanelProps) {
                           {formatDateTime(
                             record.timestamp || record.created_at,
                           )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(record.id)}
+                            disabled={deletingId !== null}
+                            title={`Eliminar registro #${record.id}`}
+                            className="inline-flex items-center justify-center rounded-md p-2 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </td>
                       </tr>
                     ))

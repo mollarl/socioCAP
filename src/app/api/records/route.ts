@@ -27,6 +27,21 @@ function resolvePage(rawValue: string | null) {
   return parsed;
 }
 
+function resolveRecordId(rawValue: unknown) {
+  if (typeof rawValue === "number" && Number.isInteger(rawValue) && rawValue > 0) {
+    return rawValue;
+  }
+
+  if (typeof rawValue === "string") {
+    const parsed = Number.parseInt(rawValue, 10);
+    if (Number.isInteger(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
 export async function GET(request: Request) {
   try {
     const { data: sessionData } = await getAuth().getSession();
@@ -140,6 +155,82 @@ export async function GET(request: Request) {
           error instanceof Error
             ? error.message
             : "Error inesperado al obtener registros.",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { data: sessionData } = await getAuth().getSession();
+    const role = normalizeUserRole(extractRawUserRole(sessionData?.user));
+    if (!sessionData?.user || !role) {
+      return NextResponse.json(
+        { ok: false, message: "No autorizado." },
+        { status: 401 },
+      );
+    }
+
+    const rawBody = await request.json();
+    const body =
+      rawBody && typeof rawBody === "object"
+        ? (rawBody as Record<string, unknown>)
+        : {};
+
+    const table = resolveTable(
+      typeof body.table === "string" ? body.table : null,
+    );
+    if (!table) {
+      return NextResponse.json(
+        { ok: false, message: "Parámetro table inválido. Use CAP o CRE." },
+        { status: 400 },
+      );
+    }
+
+    if (!canAccessTable(role, table)) {
+      return NextResponse.json(
+        { ok: false, message: "No tiene permisos para eliminar en esta tabla." },
+        { status: 403 },
+      );
+    }
+
+    const id = resolveRecordId(body.id);
+    if (!id) {
+      return NextResponse.json(
+        { ok: false, message: "Parámetro id inválido." },
+        { status: 400 },
+      );
+    }
+
+    const tableName = table === "CAP" ? '"CAP"' : '"CRE"';
+    const pool = getPool();
+    const result = await pool.query<{ id: number }>(
+      `DELETE FROM ${tableName} WHERE id = $1 RETURNING id`,
+      [id],
+    );
+
+    if (result.rowCount === 0) {
+      return NextResponse.json(
+        { ok: false, message: "Registro no encontrado." },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({
+      ok: true,
+      message: "Registro eliminado correctamente.",
+      deletedId: result.rows[0]?.id ?? id,
+      table,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Error inesperado al eliminar el registro.",
       },
       { status: 500 },
     );
