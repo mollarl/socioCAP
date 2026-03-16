@@ -95,7 +95,9 @@ export function CredentialForm({
   };
 
   const sanitizeCssValue = (property: string, value: string) => {
-    if (!value.includes("oklch(")) return value;
+    const hasUnsupportedColorFn =
+      /(oklch|oklab|lab|lch|color)\(/i.test(value);
+    if (!hasUnsupportedColorFn) return value;
 
     if (property === "background-image") {
       return "linear-gradient(135deg, #facc15, #422006)";
@@ -105,6 +107,7 @@ export function CredentialForm({
     if (property.includes("shadow")) return "none";
     if (
       property.includes("color") ||
+      property.includes("outline") ||
       property === "fill" ||
       property === "stroke"
     ) {
