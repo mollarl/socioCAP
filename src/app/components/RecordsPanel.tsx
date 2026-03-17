@@ -213,7 +213,9 @@ export function RecordsPanel({ allowedTables }: RecordsPanelProps) {
               <option value="">Seleccione una tabla</option>
             )}
             {allowedTables.includes("CAP") && <option value="CAP">CAP</option>}
-            {allowedTables.includes("CRE") && <option value="CRE">CRE</option>}
+            {allowedTables.includes("CRE") && (
+              <option value="CRE">CRERNyN</option>
+            )}
           </select>
         </div>
 

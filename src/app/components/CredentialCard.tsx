@@ -39,7 +39,7 @@ export function CredentialCard({
     ? MD5(formData.fechaExpiracion + formData.dni + "cap/control").slice(-6)
     : null;
   const logo = isCAP ? capLogo : creLogo;
-  const logoAlt = isCAP ? "Logo CAP" : "Logo CRE";
+  const logoAlt = isCAP ? "Logo CAP" : "Logo CRERNyN";
 
   return (
     <div className="flex items-center justify-center p-2 sm:p-4 md:p-8 overflow-x-auto">

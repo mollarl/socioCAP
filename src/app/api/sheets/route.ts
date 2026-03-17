@@ -10,7 +10,6 @@ import {
 
 const DEFAULT_CAP_DEPLOYMENT_ID =
   "AKfycbw66IpeMriK-t2tCH52qpxvdTwmJNT2Yp0YD0VkUqArqFGXGsCcHGv8fFkvPWXrHrne";
-const DEFAULT_CRE_DEPLOYMENT_ID = "testid";
 const MAX_RETRIES = 3;
 
 type IncomingPayload = Record<string, unknown>;
@@ -33,6 +32,7 @@ type SheetsPayload = Omit<NormalizedPayload, "isCAP" | "imagen">;
 type RetryResult = {
   ok: boolean;
   attempts: number;
+  skipped?: boolean;
   error?: string;
 };
 
@@ -54,11 +54,10 @@ function normalizeTimestamp(value: unknown) {
   return date;
 }
 
-function resolveWebAppUrl(rawValue: string | undefined, isCAP: boolean) {
-  const fallbackDeploymentId = isCAP
-    ? DEFAULT_CAP_DEPLOYMENT_ID
-    : DEFAULT_CRE_DEPLOYMENT_ID;
-  const value = (rawValue || fallbackDeploymentId).trim().replace(/^"|"$/g, "");
+function resolveWebAppUrl(rawValue: string | undefined) {
+  const value = (rawValue || DEFAULT_CAP_DEPLOYMENT_ID)
+    .trim()
+    .replace(/^"|"$/g, "");
 
   if (value.startsWith("http://") || value.startsWith("https://")) {
     return value;
@@ -67,19 +66,11 @@ function resolveWebAppUrl(rawValue: string | undefined, isCAP: boolean) {
   return `https://script.google.com/macros/s/${value}/exec`;
 }
 
-function resolveEnvWebAppValue(isCAP: boolean) {
-  if (isCAP) {
-    return (
-      process.env.NEXT_PUBLIC_GAS_WEB_APP_URL_CAP ||
-      process.env.NEXT_PUBLIC_GAS_WEB_APP_URL
-    );
-  } else {
-    return (
-      process.env.NEXT_PUBLIC_GAS_WEB_APP_URL_CRE ||
-      process.env.NEXT_PUBLIC_GAS_WEB_APP_URL_NON_CAP ||
-      process.env.NEXT_PUBLIC_GAS_WEB_APP_URL
-    );
-  }
+function resolveCapWebAppValue() {
+  return (
+    process.env.NEXT_PUBLIC_GAS_WEB_APP_URL_CAP ||
+    process.env.NEXT_PUBLIC_GAS_WEB_APP_URL
+  );
 }
 
 function normalizePayload(rawPayload: IncomingPayload): NormalizedPayload {
@@ -100,11 +91,8 @@ function normalizePayload(rawPayload: IncomingPayload): NormalizedPayload {
   };
 }
 
-async function saveToSheets(
-  payload: SheetsPayload,
-  isCAP: boolean,
-) {
-  const webAppUrl = resolveWebAppUrl(resolveEnvWebAppValue(isCAP), isCAP);
+async function saveToSheets(payload: SheetsPayload) {
+  const webAppUrl = resolveWebAppUrl(resolveCapWebAppValue());
   const googleResponse = await fetch(webAppUrl, {
     method: "POST",
     headers: {
@@ -225,7 +213,8 @@ export async function POST(request: Request) {
         {
           ok: false,
           success: false,
-          message: "No tiene permisos para guardar registros en esta institución.",
+          message:
+            "No tiene permisos para guardar registros en esta institución.",
         },
         { status: 403 },
       );
@@ -233,24 +222,35 @@ export async function POST(request: Request) {
 
     const { isCAP, imagen: _imagen, ...googlePayload } = normalizedPayload;
 
-    const [sheetsResult, dbResult] = await Promise.all([
-      withRetries(
-        () => saveToSheets(googlePayload, normalizedPayload.isCAP),
-        "Google Sheets",
-      ),
-      withRetries(
+    let sheetsResult: RetryResult = {
+      ok: true,
+      attempts: 0,
+      skipped: true,
+    };
+    let dbResult: RetryResult;
+
+    if (normalizedPayload.isCAP) {
+      [sheetsResult, dbResult] = await Promise.all([
+        withRetries(() => saveToSheets(googlePayload), "Google Sheets"),
+        withRetries(() => saveToDatabase(normalizedPayload), "Base de datos"),
+      ]);
+    } else {
+      dbResult = await withRetries(
         () => saveToDatabase(normalizedPayload),
         "Base de datos",
-      ),
-    ]);
+      );
+    }
 
     const warnings: string[] = [];
-    if (!sheetsResult.ok && sheetsResult.error) warnings.push(sheetsResult.error);
+    if (!sheetsResult.ok && sheetsResult.error)
+      warnings.push(sheetsResult.error);
     if (!dbResult.ok && dbResult.error) warnings.push(dbResult.error);
 
     const successMessage =
       warnings.length === 0
-        ? "Registro guardado en Google Sheets y en Neon."
+        ? normalizedPayload.isCAP
+          ? "Registro guardado en Google Sheets y en bse de datos."
+          : "Registro guardado en base de datos."
         : `Registro procesado con advertencias. Puede continuar igual. ${warnings.join(" | ")}`;
 
     return NextResponse.json({
@@ -259,28 +259,26 @@ export async function POST(request: Request) {
       message: successMessage,
       warnings,
       attempts: {
-        sheets: sheetsResult.attempts,
+        sheets: sheetsResult.skipped ? null : sheetsResult.attempts,
         database: dbResult.attempts,
       },
       storage: {
-        sheets: sheetsResult.ok,
+        sheets: sheetsResult.skipped ? false : sheetsResult.ok,
+        sheetsAttempted: !sheetsResult.skipped,
         database: dbResult.ok,
         table: isCAP ? "CAP" : "CRE",
       },
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        ok: true,
-        success: true,
-        message:
-          "No se pudo confirmar el guardado. Puede continuar igual.",
-        warnings: [
-          error instanceof Error
-            ? error.message
-            : "Error inesperado al enviar el registro.",
-        ],
-      },
-    );
+    return NextResponse.json({
+      ok: true,
+      success: true,
+      message: "No se pudo confirmar el guardado. Puede continuar igual.",
+      warnings: [
+        error instanceof Error
+          ? error.message
+          : "Error inesperado al enviar el registro.",
+      ],
+    });
   }
 }

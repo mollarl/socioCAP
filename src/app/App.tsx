@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CredentialForm } from "./components/CredentialForm";
 import { CredentialCard } from "./components/CredentialCard";
 import { RecordsPanel } from "./components/RecordsPanel";
+import { AccountDialog } from "./components/AccountDialog";
 import { authClient } from "@/lib/auth/client";
 import {
   extractRawUserRole,
@@ -32,6 +33,7 @@ type AppTab = "create" | "records";
 export default function App() {
   const router = useRouter();
   const credentialCardRef = useRef<HTMLDivElement>(null);
+  const [isAccountDialogOpen, setIsAccountDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<AppTab>("create");
   const [institution, setInstitution] = useState<Institution | "">("");
   const [formData, setFormData] = useState<FormData>({
@@ -147,10 +149,11 @@ export default function App() {
               </span>
               <button
                 type="button"
-                onClick={handleSignOut}
-                className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm"
+                onClick={() => setIsAccountDialogOpen(true)}
+                className="max-w-[280px] px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm truncate"
+                title={sessionData.user.email}
               >
-                Cerrar sesión
+                {sessionData.user.email}
               </button>
             </div>
           </div>
@@ -246,6 +249,14 @@ export default function App() {
           <RecordsPanel allowedTables={allowedTables} />
         )}
       </div>
+
+      <AccountDialog
+        email={sessionData.user.email}
+        role={userRole}
+        isOpen={isAccountDialogOpen}
+        onOpenChange={setIsAccountDialogOpen}
+        onSignOut={handleSignOut}
+      />
     </div>
   );
 }
