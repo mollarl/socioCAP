@@ -73,8 +73,22 @@ function resolveCapWebAppValue() {
   );
 }
 
+function normalizeIsCap(value: unknown) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "false" || normalized === "0" || normalized === "cre") {
+      return false;
+    }
+    if (normalized === "true" || normalized === "1" || normalized === "cap") {
+      return true;
+    }
+  }
+  return true;
+}
+
 function normalizePayload(rawPayload: IncomingPayload): NormalizedPayload {
-  const isCAP = rawPayload.isCAP !== false;
+  const isCAP = normalizeIsCap(rawPayload.isCAP);
 
   return {
     nombres: normalizeText(rawPayload.nombres),
@@ -249,7 +263,7 @@ export async function POST(request: Request) {
     const successMessage =
       warnings.length === 0
         ? normalizedPayload.isCAP
-          ? "Registro guardado en Google Sheets y en bse de datos."
+          ? "Registro guardado en Google Sheets y en base de datos."
           : "Registro guardado en base de datos."
         : `Registro procesado con advertencias. Puede continuar igual. ${warnings.join(" | ")}`;
 

@@ -339,7 +339,7 @@ export function CredentialForm({
         throw new Error(
           parsedResponse?.message ||
             parsedResponse?.error ||
-            "No se pudo guardar el registro en Sheets.",
+            "No se pudo guardar el registro.",
         );
       }
 
