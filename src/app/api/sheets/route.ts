@@ -22,12 +22,11 @@ type NormalizedPayload = {
   matricula: string;
   expiracion: string;
   control: string;
-  imagen: string | null;
   timestamp: string;
   isCAP: boolean;
 };
 
-type SheetsPayload = Omit<NormalizedPayload, "isCAP" | "imagen">;
+type SheetsPayload = Omit<NormalizedPayload, "isCAP">;
 
 type RetryResult = {
   ok: boolean;
@@ -98,8 +97,6 @@ function normalizePayload(rawPayload: IncomingPayload): NormalizedPayload {
     matricula: normalizeText(rawPayload.matricula),
     expiracion: normalizeText(rawPayload.expiracion),
     control: normalizeText(rawPayload.control),
-    imagen:
-      typeof rawPayload.imagen === "string" ? rawPayload.imagen.trim() : null,
     timestamp: normalizeText(rawPayload.timestamp) || new Date().toISOString(),
     isCAP,
   };
@@ -161,7 +158,7 @@ async function saveToDatabase(payload: NormalizedPayload) {
     INSERT INTO ${tableName}
       (nombres, apellido, dni, fecha_nacimiento, matricula, expiracion, control, imagen, "timestamp")
     VALUES
-      ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ($1, $2, $3, $4, $5, $6, $7, NULL, $8)
   `;
 
   await pool.query(query, [
@@ -172,7 +169,6 @@ async function saveToDatabase(payload: NormalizedPayload) {
     payload.matricula || null,
     normalizeDate(payload.expiracion),
     payload.control || null,
-    payload.imagen,
     normalizeTimestamp(payload.timestamp),
   ]);
 }
@@ -234,7 +230,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { isCAP, imagen: _imagen, ...googlePayload } = normalizedPayload;
+    const { isCAP, ...googlePayload } = normalizedPayload;
 
     let sheetsResult: RetryResult = {
       ok: true,

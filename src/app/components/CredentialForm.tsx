@@ -25,6 +25,63 @@ interface CredentialFormProps {
 }
 
 const matriculaOptions = ["Arquero", "Juez", "Entrenador", "Dirigente", "NO"];
+const MAX_IMAGE_SIDE = 1280;
+const MAX_IMAGE_BYTES = 900 * 1024;
+
+function estimateDataUrlSizeBytes(dataUrl: string) {
+  const base64 = dataUrl.split(",")[1] || "";
+  return Math.ceil((base64.length * 3) / 4);
+}
+
+async function loadImageElement(file: File) {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.decoding = "async";
+    image.src = objectUrl;
+
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("No se pudo leer la imagen."));
+    });
+
+    return image;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function compressImageToDataUrl(file: File) {
+  const image = await loadImageElement(file);
+
+  const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(image.width, image.height));
+  const targetWidth = Math.max(1, Math.round(image.width * scale));
+  const targetHeight = Math.max(1, Math.round(image.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("No se pudo procesar la imagen.");
+  }
+
+  context.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+  const qualities = [0.86, 0.76, 0.66, 0.56, 0.46];
+  let best = canvas.toDataURL("image/jpeg", qualities[0]);
+
+  for (const quality of qualities) {
+    const candidate = canvas.toDataURL("image/jpeg", quality);
+    best = candidate;
+    if (estimateDataUrlSizeBytes(candidate) <= MAX_IMAGE_BYTES) {
+      return candidate;
+    }
+  }
+
+  return best;
+}
 
 export function CredentialForm({
   formData,
@@ -51,11 +108,19 @@ export function CredentialForm({
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        updateField("imagen", reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setSubmitError("");
+      void (async () => {
+        try {
+          const compressedImage = await compressImageToDataUrl(file);
+          updateField("imagen", compressedImage);
+        } catch (error) {
+          setSubmitError(
+            error instanceof Error
+              ? error.message
+              : "No se pudo procesar la imagen seleccionada.",
+          );
+        }
+      })();
     }
   };
 
@@ -311,7 +376,6 @@ export function CredentialForm({
           matricula: isCAP ? formData.matricula.join(", ") : "",
           expiracion: formData.fechaExpiracion,
           control,
-          imagen: formData.imagen,
           isCAP,
           timestamp: new Date().toISOString(),
         }),
