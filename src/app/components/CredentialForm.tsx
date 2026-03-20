@@ -159,15 +159,30 @@ export function CredentialForm({
     return null;
   };
 
-  const sanitizeCssValue = (property: string, value: string) => {
+  const sanitizeCssValue = (
+    property: string,
+    value: string,
+    sourceEl: HTMLElement,
+  ) => {
     const hasUnsupportedColorFn =
       /(oklch|oklab|lab|lch|color)\(/i.test(value);
     if (!hasUnsupportedColorFn) return value;
 
+    const hasClass = (className: string) => sourceEl.classList.contains(className);
+
     if (property === "background-image") {
-      return "linear-gradient(135deg, #facc15, #422006)";
+      return isCAP
+        ? "linear-gradient(135deg, #facc15, #422006)"
+        : "linear-gradient(135deg, #4ade80, #052e16)";
     }
-    if (property.includes("background")) return "#ffffff";
+    if (property.includes("background")) {
+      if (hasClass("bg-black")) return "#000000";
+      if (hasClass("bg-red-500")) return "#ef4444";
+      if (hasClass("bg-white")) return "#ffffff";
+      if (hasClass("bg-gray-100")) return "#f3f4f6";
+      if (hasClass("bg-yellow-200")) return "#fde68a";
+      return "#ffffff";
+    }
     if (property.includes("border")) return "#d1d5db";
     if (property.includes("shadow")) return "none";
     if (
@@ -176,6 +191,10 @@ export function CredentialForm({
       property === "fill" ||
       property === "stroke"
     ) {
+      if (hasClass("text-white")) return "#ffffff";
+      if (hasClass("text-gray-500")) return "#6b7280";
+      if (hasClass("text-gray-900")) return "#111827";
+      if (hasClass("text-yellow-800")) return "#92400e";
       return "#111827";
     }
 
@@ -192,7 +211,7 @@ export function CredentialForm({
 
       for (const property of computed) {
         const rawValue = computed.getPropertyValue(property);
-        const value = sanitizeCssValue(property, rawValue);
+        const value = sanitizeCssValue(property, rawValue, sourceEl);
         if (!value) continue;
         cloneEl.style.setProperty(
           property,
