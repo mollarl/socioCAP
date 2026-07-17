@@ -8,8 +8,6 @@ import {
   tableFromInstitution,
 } from "@/lib/auth/authorization";
 
-const DEFAULT_CAP_DEPLOYMENT_ID =
-  "AKfycbw66IpeMriK-t2tCH52qpxvdTwmJNT2Yp0YD0VkUqArqFGXGsCcHGv8fFkvPWXrHrne";
 const MAX_RETRIES = 3;
 
 type IncomingPayload = Record<string, unknown>;
@@ -54,9 +52,15 @@ function normalizeTimestamp(value: unknown) {
 }
 
 function resolveWebAppUrl(rawValue: string | undefined) {
-  const value = (rawValue || DEFAULT_CAP_DEPLOYMENT_ID)
+  const value = (rawValue || "")
     .trim()
     .replace(/^"|"$/g, "");
+
+  if (!value) {
+    throw new Error(
+      "Google Apps Script URL no configurada. Define NEXT_PUBLIC_GAS_WEB_APP_URL o NEXT_PUBLIC_GAS_WEB_APP_URL_CAP.",
+    );
+  }
 
   if (value.startsWith("http://") || value.startsWith("https://")) {
     return value;
